@@ -29,6 +29,18 @@ async def lifespan(app: FastAPI):
 
   # Bootstrap all 16 VIT ensemble models into the module-level registry singleton.
   # endpoints.py imports this same singleton so models are immediately visible.
+  # Restore persisted state from Redis before bootstrapping models
+  from app.services.training import training_manager
+  from app.services.feature_store import feature_store
+  from app.services.dataset_registry import dataset_registry
+  jobs_restored     = await training_manager.restore_from_redis()
+  features_restored = await feature_store.restore_from_redis()
+  datasets_restored = await dataset_registry.restore_from_redis()
+  logger.info(
+      "Redis restore: %d jobs, %d features, %d datasets",
+      jobs_restored, features_restored, datasets_restored,
+  )
+
   loaded = model_registry.bootstrap_vit_models()
   app.state.models_loaded = loaded
 
@@ -43,6 +55,8 @@ async def lifespan(app: FastAPI):
 
   yield
 
+  from app.core.redis_client import close_redis
+  await close_redis()
   logger.info("VIT AI Service shutting down.")
 
 
