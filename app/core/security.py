@@ -28,9 +28,10 @@ async def verify_auth(
     token: Optional[str] = Depends(oauth2_scheme),
     api_key: Optional[str] = Depends(api_key_header)
 ) -> Dict[str, Any]:
-    # Internal API Key Auth
-    internal_key = os.getenv("INTERNAL_API_KEY", "vit-internal-key")
-    if api_key and api_key == internal_key:
+    # Internal API Key Auth — prefer VIT_AI_API_KEY (set in Render), fall back to
+    # INTERNAL_API_KEY for local dev. Never authenticate if both are absent.
+    internal_key = settings.VIT_AI_API_KEY or os.getenv("INTERNAL_API_KEY", "")
+    if api_key and internal_key and api_key == internal_key:
         return {"sub": "internal_service", "scopes": ["full"]}
 
     # JWT Auth

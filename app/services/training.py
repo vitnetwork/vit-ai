@@ -26,7 +26,7 @@ class TrainingManager:
         job.status = status
         if log:
             job.logs.append(log)
-        job.updated_at = datetime.now(datetime.UTC)
+        job.updated_at = datetime.now(UTC)
         return job
 
 training_manager = TrainingManager()
