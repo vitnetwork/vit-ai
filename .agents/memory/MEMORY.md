@@ -1,0 +1,3 @@
+- [VIT ecosystem architecture](vit-ecosystem.md) — 4-service mesh: vitnetwork (gateway), vit-ai (oracle), vit-storage, vit-chain; all on Render free/Oregon
+- [vit-ai route prefix fix](vit-ai-fixes.md) — router was missing prefix="/api/v1"; all cross-service calls were 404ing; fixed and pushed
+- [inter-service auth contract](inter-service-auth.md) — shared VIT_AI_API_KEY set on both services; vitnetwork sends X-API-KEY header; vit-ai validates via settings.VIT_AI_API_KEY
