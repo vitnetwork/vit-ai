@@ -85,11 +85,23 @@ async def ping():
 
 @app.get("/health")
 async def health():
-  loaded = getattr(app.state, "models_loaded", 0)
+  # Detect whether lifespan startup has completed (models_loaded is set during lifespan)
+  startup_complete = hasattr(app.state, "models_loaded")
+  if not startup_complete:
+      from fastapi.responses import JSONResponse as _JSONResponse
+      return _JSONResponse(
+          status_code=503,
+          content={
+              "status":      "warming",
+              "retry_after": 15,
+              "version":     settings.APP_VERSION,
+          },
+      )
+  loaded = app.state.models_loaded
   status = "healthy" if loaded > 0 else "degraded"
   return {
-      "status": status,
-      "version": settings.APP_VERSION,
+      "status":        status,
+      "version":       settings.APP_VERSION,
       "models_loaded": loaded,
   }
 

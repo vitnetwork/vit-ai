@@ -70,8 +70,20 @@ class InternalProvider(ModelProvider):
 
         artifact = registry.get_artifact(model_id, model.active_version)
         if not artifact:
-            logger.warning(f"No artifact loaded for {model_id}. Falling back to mock prediction.")
-            return {"status": "success", "prediction": 0.55, "provider": "internal_mock"}
+            logger.error(
+                "No artifact loaded for %s v%s. "
+                "Ensure .pkl files are bundled in the Docker image under MODEL_DIR.",
+                model_id, model.active_version,
+            )
+            return {
+                "status": "error",
+                "message": (
+                    f"Model '{model_id}' artifact not loaded. "
+                    "The service is operating in DEGRADED mode — rebuild the Docker image "
+                    "with MODEL_DIR populated."
+                ),
+                "model_id": model_id,
+            }
 
         result = artifact.predict(payload)
         return result
