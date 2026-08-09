@@ -70,16 +70,28 @@ class InternalProvider(ModelProvider):
 
         artifact = registry.get_artifact(model_id, model.active_version)
         if not artifact:
-            logger.warning(f"No artifact loaded for {model_id}. Falling back to mock prediction.")
-            return {"status": "success", "prediction": 0.55, "provider": "internal_mock"}
+            logger.error(
+                "No artifact loaded for %s v%s. "
+                "Ensure .pkl files are bundled in the Docker image under MODEL_DIR.",
+                model_id, model.active_version,
+            )
+            return {
+                "status": "error",
+                "message": (
+                    f"Model '{model_id}' artifact not loaded. "
+                    "The service is operating in DEGRADED mode — rebuild the Docker image "
+                    "with MODEL_DIR populated."
+                ),
+                "model_id": model_id,
+            }
 
-        # Run inference using the standardized Model Interface (Phase 4 requirement)
         result = artifact.predict(payload)
         return result
 
     async def embeddings(self, text: str, model_id: str) -> Dict[str, Any]:
-        # Return fallback embedding
-        return {"embedding": [0.0] * 128, "model": model_id, "provider": "internal"}
+        # Delegate to the deterministic hash embedding service
+        from app.services.embedding import embedding_service
+        return await embedding_service.generate(text, model_id)
 
     async def stream(self, model_id: str, payload: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], None]:
         result = await self.infer(model_id, payload)
@@ -117,7 +129,8 @@ class EnsembleProvider(ModelProvider):
         return await self.ensemble_engine.orchestrate(payload)
 
     async def embeddings(self, text: str, model_id: str) -> Dict[str, Any]:
-        return {"status": "error", "message": "EnsembleProvider does not support embeddings"}
+        from app.services.embedding import embedding_service
+        return await embedding_service.generate(text, model_id)
 
     async def stream(self, model_id: str, payload: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], None]:
         result = await self.infer(model_id, payload)
@@ -137,6 +150,16 @@ class EnsembleProvider(ModelProvider):
 
 
 class AdHocProvider(ModelProvider):
+    """
+    Fallback provider used when a requested model_id is not found in the registry.
+
+    Routes to the EnsembleEngine when market_odds are present in the payload,
+    so sports-prediction requests always get a meaningful result rather than a
+    hardcoded 0.0 stub.  For non-sports payloads (chat, classify, summarize,
+    text embeddings) it returns a structured response that clearly identifies
+    the ad-hoc path.
+    """
+
     def __init__(self):
         self._is_initialized = False
         self._request_count = 0
@@ -150,10 +173,47 @@ class AdHocProvider(ModelProvider):
 
     async def infer(self, model_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         self._request_count += 1
-        return {"status": "success", "prediction": 0.0, "provider": "adhoc"}
+
+        # If market odds are present, route to the ensemble engine which can produce
+        # a real probabilistic prediction from the implied probabilities alone.
+        if payload.get("market_odds"):
+            try:
+                from app.services.ensemble import ensemble_engine
+                result = await ensemble_engine.orchestrate(payload)
+                result["provider"] = "adhoc_ensemble_fallback"
+                result["fallback_reason"] = f"model_id '{model_id}' not in registry; routed to ensemble"
+                return result
+            except Exception as exc:
+                logger.warning("AdHocProvider ensemble fallback failed: %s", exc)
+
+        # For text/NLP requests (prompt present), return a structured response
+        # that at minimum echoes the prompt back so callers know the request was received.
+        if payload.get("prompt"):
+            prompt_text = str(payload["prompt"])[:200]
+            return {
+                "status": "success",
+                "provider": "adhoc",
+                "model_id": model_id,
+                "result": f"[ad-hoc] Received: {prompt_text}",
+                "note": (
+                    f"Model '{model_id}' is not registered. "
+                    "Register it via POST /api/v1/models or use 'ensemble_v1' for sports predictions."
+                ),
+            }
+
+        # Generic fallback — return a low-confidence prediction
+        return {
+            "status": "success",
+            "prediction": 0.5,
+            "confidence": 0.0,
+            "provider": "adhoc",
+            "model_id": model_id,
+            "note": f"Model '{model_id}' not found. Using neutral prediction.",
+        }
 
     async def embeddings(self, text: str, model_id: str) -> Dict[str, Any]:
-        return {"embedding": [0.0] * 128, "model": model_id, "provider": "adhoc"}
+        from app.services.embedding import embedding_service
+        return await embedding_service.generate(text, model_id)
 
     async def stream(self, model_id: str, payload: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], None]:
         result = await self.infer(model_id, payload)

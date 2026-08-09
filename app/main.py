@@ -29,6 +29,18 @@ async def lifespan(app: FastAPI):
 
   # Bootstrap all 16 VIT ensemble models into the module-level registry singleton.
   # endpoints.py imports this same singleton so models are immediately visible.
+  # Restore persisted state from Redis before bootstrapping models
+  from app.services.training import training_manager
+  from app.services.feature_store import feature_store
+  from app.services.dataset_registry import dataset_registry
+  jobs_restored     = await training_manager.restore_from_redis()
+  features_restored = await feature_store.restore_from_redis()
+  datasets_restored = await dataset_registry.restore_from_redis()
+  logger.info(
+      "Redis restore: %d jobs, %d features, %d datasets",
+      jobs_restored, features_restored, datasets_restored,
+  )
+
   loaded = model_registry.bootstrap_vit_models()
   app.state.models_loaded = loaded
 
@@ -43,6 +55,8 @@ async def lifespan(app: FastAPI):
 
   yield
 
+  from app.core.redis_client import close_redis
+  await close_redis()
   logger.info("VIT AI Service shutting down.")
 
 
@@ -61,7 +75,7 @@ app.add_middleware(
   allow_headers=["*"],
 )
 
-app.include_router(router)
+app.include_router(router, prefix="/api/v1")
 
 
 @app.get("/ping")
@@ -71,11 +85,23 @@ async def ping():
 
 @app.get("/health")
 async def health():
-  loaded = getattr(app.state, "models_loaded", 0)
+  # Detect whether lifespan startup has completed (models_loaded is set during lifespan)
+  startup_complete = hasattr(app.state, "models_loaded")
+  if not startup_complete:
+      from fastapi.responses import JSONResponse as _JSONResponse
+      return _JSONResponse(
+          status_code=503,
+          content={
+              "status":      "warming",
+              "retry_after": 15,
+              "version":     settings.APP_VERSION,
+          },
+      )
+  loaded = app.state.models_loaded
   status = "healthy" if loaded > 0 else "degraded"
   return {
-      "status": status,
-      "version": settings.APP_VERSION,
+      "status":        status,
+      "version":       settings.APP_VERSION,
       "models_loaded": loaded,
   }
 

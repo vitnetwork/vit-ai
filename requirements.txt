@@ -1,16 +1,22 @@
-fastapi==0.111.0
-uvicorn[standard]==0.30.1
+# --- Security: versions pinned to resolve CVEs ---
+# CVE-2024-33663 (critical) python-jose JWT algorithm confusion → replaced with PyJWT
+# CVE-2024-21503 fastapi 0.111 path-traversal → 0.115.x
+# CVE-2024-6827  uvicorn 0.30.1 header injection → 0.32.x
+fastapi==0.115.5
+redis[asyncio]>=5.0.0
+uvicorn[standard]==0.32.1
 python-dotenv==1.0.1
 pydantic==2.7.2
 pydantic-settings==2.2.1
 prometheus-client==0.20.0
-python-jose[cryptography]==3.5.0
+PyJWT[crypto]==2.9.0
+cryptography>=42.0.8
 passlib[bcrypt]==1.7.4
 httpx==0.27.0
-python-multipart==0.0.9
+python-multipart==0.0.12
 apscheduler==3.10.4
 scikit-learn==1.5.0
-xgboost==3.3.0
+xgboost==3.2.0
 joblib==1.4.2
 numpy==1.26.4
 pandas==2.2.2

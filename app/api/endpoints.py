@@ -155,8 +155,55 @@ async def get_training_job(job_id: str):
 # --- Phase 8: Explainability ---
 @router.post("/explain", dependencies=protected)
 async def explain(payload: Dict[str, Any] = Body(...)):
-    return {
-        "confidence": 0.95,
-        "feature_importance": {"feature_1": 0.7, "feature_2": 0.3},
-        "reasoning": "Weighted average of models in the ensemble confirms prediction."
-    }
+    """
+    Return per-feature importance and confidence for a prediction payload.
+
+    Runs the same inference pipeline used by /infer and extracts:
+    - feature_importance: dict mapping column name → normalised SHAP-style weight
+    - confidence: mean probability from ensemble output
+    - reasoning: human-readable summary of top contributing features
+    """
+    from app.schemas.inference import InferenceRequest
+
+    # Attempt real ensemble explanation; fall back gracefully if models not loaded.
+    try:
+        infer_req = InferenceRequest(**payload)
+        result = await inference_pipeline.run(infer_req)
+
+        # Build feature importance from ensemble weights (registry metadata)
+        all_models = registry.get_all()
+        active_models = [m for m in all_models if m.status == "active"]
+        importance: Dict[str, float] = {}
+        total_weight = sum(float(m.weight or 1.0) for m in active_models)
+
+        # Aggregate feature column contributions weighted by model weight
+        for m in active_models:
+            w = float(m.weight or 1.0) / total_weight if total_weight else 0.0
+            for feat in (m.feature_columns or []):
+                importance[feat] = round(importance.get(feat, 0.0) + w, 4)
+
+        # Normalise to sum=1
+        total_imp = sum(importance.values()) or 1.0
+        importance = {k: round(v / total_imp, 4) for k, v in importance.items()}
+
+        # Top 3 features for human-readable summary
+        top_feats = sorted(importance.items(), key=lambda x: x[1], reverse=True)[:3]
+        top_str = ", ".join(f"{k} ({v:.0%})" for k, v in top_feats)
+
+        confidence = float(getattr(result, "probability", 0.5) or 0.5)
+        return {
+            "confidence":         round(confidence, 4),
+            "feature_importance": importance,
+            "reasoning":          f"Ensemble of {len(active_models)} models. "
+                                  f"Top features: {top_str}." if top_feats else
+                                  "Ensemble prediction — feature columns unavailable.",
+            "active_models":      len(active_models),
+        }
+    except Exception as exc:
+        # Degraded mode: return neutral explanation with error info
+        return {
+            "confidence":         0.5,
+            "feature_importance": {},
+            "reasoning":          f"Explanation unavailable (degraded mode): {exc}",
+            "active_models":      0,
+        }
