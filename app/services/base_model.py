@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
+from app.services.feature_adapter import feature_adapter
+
 logger = logging.getLogger(__name__)
 
 
@@ -235,9 +237,23 @@ class StandardizedModel(BaseModelInterface):
       try:
           import numpy as np
           model, scaler = self._resolve_artifact()
-          features = payload.get("features", [])
+          features = payload.get("features", None)
+          artifact_features = None
+          if isinstance(self._artifact, dict):
+              artifact_features = self._artifact.get("feature_columns") or []
+
           if isinstance(features, dict):
               features = self._features_dict_to_list(features)
+          elif isinstance(features, list):
+              features = [self._normalize_feature_value(v) for v in features]
+          elif isinstance(features, (int, float, str, bool)):
+              features = [self._normalize_feature_value(features)]
+          elif features is None and payload:
+              if isinstance(payload, dict) and payload.get("features") is None and any(k in payload for k in ["market_odds", "home_form", "away_form", "home_elo", "away_elo", "h2h_home_rate", "over_25_implied"]):
+                  features = feature_adapter.build_feature_vector(payload, artifact_features)
+              else:
+                  raise ValueError("Payload must include a non-empty 'features' list or dict")
+
           if not isinstance(features, list) or not features:
               raise ValueError("Payload must include a non-empty 'features' list or dict")
 
