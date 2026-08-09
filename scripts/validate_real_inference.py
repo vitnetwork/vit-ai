@@ -8,14 +8,17 @@ This script will:
 - validate output contract (probabilities if present)
 - report metrics counters before/after
 """
+import os
 import sys
 import random
 import time
+
+API_KEY = os.getenv("VIT_AI_API_KEY", "vit-internal-key")
+os.environ.setdefault("VIT_AI_API_KEY", API_KEY)
+
 from fastapi.testclient import TestClient
 from app.main import app
 from app.services.registry import registry
-
-API_KEY = 'vit-internal-key'
 
 def find_ready_model():
     diags = registry.get_diagnostics()

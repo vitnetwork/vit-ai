@@ -37,7 +37,11 @@ async def verify_auth(
             return {"sub": "internal_service", "scopes": ["full"], "auth": "hmac"}
 
     # ── 2. Static API key (backward compat / fallback) ───────────────────────
-    internal_key = settings.VIT_AI_API_KEY or os.getenv("INTERNAL_API_KEY", "")
+    internal_key = (
+        settings.VIT_AI_API_KEY
+        or os.getenv("VIT_AI_API_KEY", "")
+        or os.getenv("INTERNAL_API_KEY", "")
+    )
     if api_key and internal_key and api_key == internal_key:
         return {"sub": "internal_service", "scopes": ["full"], "auth": "api_key"}
 

@@ -4,10 +4,25 @@ All values are loaded from environment variables via pydantic-settings.
 No hardcoded URLs or credentials are permitted per VIT Chain engineering directive.
 """
 import logging
+import os
+from pathlib import Path
 from typing import Optional, List
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
+
+
+def _default_model_dir() -> str:
+    workspace_models = Path.cwd() / "models"
+    if workspace_models.exists():
+        return str(workspace_models)
+
+    env_value = os.getenv("MODEL_DIR")
+    if env_value:
+        return env_value
+
+    return "/app/models"
 
 
 class Settings(BaseSettings):
@@ -24,7 +39,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # ── Model storage ─────────────────────────────────────────────────────
-    MODEL_DIR: str = "/app/models"
+    MODEL_DIR: str = Field(default_factory=_default_model_dir)
 
     # ── AI kernel providers ───────────────────────────────────────────────
     # Used by AIKernel.__init__ at module level — must have a safe default.
@@ -63,7 +78,7 @@ def _build_settings() -> Settings:
             VERSION="0.1.0",
             PORT=8000,
             LOG_LEVEL="INFO",
-            MODEL_DIR="/app/models",
+            MODEL_DIR=_default_model_dir(),
             SUPPORTED_PROVIDERS=["internal", "ensemble", "adhoc"],
             SECRET_KEY="vit-ai-default-secret-change-in-prod",
             ACCESS_TOKEN_EXPIRE_MINUTES=30,

@@ -99,7 +99,16 @@ class StandardizedModel(BaseModelInterface):
       return model is not None and (hasattr(model, "predict_proba") or hasattr(model, "predict"))
 
   def load(self) -> bool:
-      model_dir = os.getenv("MODEL_DIR", "/app/models")
+      try:
+          from app.core.config import settings
+      except Exception:
+          settings = None
+
+      model_dir = None
+      if settings is not None:
+          model_dir = getattr(settings, "MODEL_DIR", None)
+      if not model_dir:
+          model_dir = os.getenv("MODEL_DIR") or "/app/models"
       candidates = []
 
       if self.storage_id:

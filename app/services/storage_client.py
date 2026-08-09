@@ -17,7 +17,7 @@ class StorageClient:
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"{self.base_url}/upload",
+                    f"{self.base_url}/api/v1/upload",
                     files={"file": (blob_name, data)}
                 )
                 return response.status_code == 200
@@ -32,7 +32,7 @@ class StorageClient:
             return None
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(f"{self.base_url}/download/{storage_id}")
+                response = await client.get(f"{self.base_url}/api/v1/download/{storage_id}")
                 if response.status_code == 200:
                     return response.content
                 return None
@@ -47,7 +47,7 @@ class StorageClient:
             return None
         try:
             with httpx.Client(timeout=10.0) as client:
-                response = client.get(f"{self.base_url}/download/{storage_id}")
+                response = client.get(f"{self.base_url}/api/v1/download/{storage_id}")
                 if response.status_code == 200:
                     return response.content
                 return None

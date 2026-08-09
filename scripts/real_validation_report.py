@@ -12,6 +12,9 @@ import time
 from pathlib import Path
 from typing import Dict, Any
 
+API_KEY = os.getenv("VIT_AI_API_KEY", "vit-internal-key")
+os.environ.setdefault("VIT_AI_API_KEY", API_KEY)
+
 from app.services.registry import registry
 from app.services.base_model import StandardizedModel
 
