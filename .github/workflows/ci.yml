@@ -31,7 +31,8 @@ jobs:
   prod-env-check:
     needs: tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Only run the production env check on pushes to main when the secret is configured.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SERVICE_TOKEN_SECRET != ''
     steps:
       - uses: actions/checkout@v4
 
