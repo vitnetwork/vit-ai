@@ -38,7 +38,9 @@ class Settings(BaseSettings):
     # ── vit-storage integration ───────────────────────────────────────────
     # Defaults to None when unset; storage routes degrade gracefully.
     VIT_STORAGE_URL: Optional[str] = None
-
+    # ── VIT Network / gateway integration ─────────────────────────────────────────────
+    # Optional at startup — used for real feature ingestion and validation tooling.
+    VIT_NETWORK_URL: Optional[str] = None
     # ── Internal service authentication ───────────────────────────────────
     # Optional at startup — auth middleware returns 401 when the key is absent
     # rather than preventing boot.
@@ -66,6 +68,7 @@ def _build_settings() -> Settings:
             SECRET_KEY="vit-ai-default-secret-change-in-prod",
             ACCESS_TOKEN_EXPIRE_MINUTES=30,
             VIT_STORAGE_URL=None,
+            VIT_NETWORK_URL=None,
             VIT_AI_API_KEY=None,
             ORACLE_PRIVATE_KEY=None,
             UNIVERSAL_ORACLE_ADDRESS=None,
@@ -74,6 +77,7 @@ def _build_settings() -> Settings:
     # Warn about missing optional production values — never abort
     _OPTIONAL_PROD = {
         "VIT_STORAGE_URL": s.VIT_STORAGE_URL,
+        "VIT_NETWORK_URL": s.VIT_NETWORK_URL,
         "VIT_AI_API_KEY": s.VIT_AI_API_KEY,
         "ORACLE_PRIVATE_KEY": s.ORACLE_PRIVATE_KEY,
         "UNIVERSAL_ORACLE_ADDRESS": s.UNIVERSAL_ORACLE_ADDRESS,

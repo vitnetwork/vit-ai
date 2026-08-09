@@ -16,6 +16,8 @@ services:
           value: /app/models
         - key: VIT_STORAGE_URL
           value: https://vit-storage-4trt.onrender.com
+        - key: VIT_NETWORK_URL
+          sync: false
         - key: VIT_AI_API_KEY
           sync: false
         - key: ORACLE_PRIVATE_KEY

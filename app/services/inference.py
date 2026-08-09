@@ -53,6 +53,13 @@ class InferencePipeline:
             result = result_data
 
         latency = time.time() - start_time
+        # Record metrics for this inference
+        try:
+            from app.metrics.updater import record_inference
+            success = not (isinstance(result, dict) and result.get("status") == "error")
+            record_inference(request.model_id, latency, success=success)
+        except Exception:
+            pass
 
         return InferenceResponse(
             request_id=str(uuid.uuid4()),

@@ -64,6 +64,11 @@ class InternalProvider(ModelProvider):
 
     async def infer(self, model_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         self._request_count += 1
+        try:
+            from app.metrics.updater import record_provider_request
+            record_provider_request("internal")
+        except Exception:
+            pass
         model = registry.get_by_id(model_id)
         if not model or not model.active_version:
             return {"status": "error", "message": "Model not found or inactive"}
@@ -137,6 +142,11 @@ class EnsembleProvider(ModelProvider):
 
     async def infer(self, model_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         self._request_count += 1
+        try:
+            from app.metrics.updater import record_provider_request
+            record_provider_request("ensemble")
+        except Exception:
+            pass
         return await self.ensemble_engine.orchestrate(payload)
 
     async def embeddings(self, text: str, model_id: str) -> Dict[str, Any]:
@@ -184,6 +194,11 @@ class AdHocProvider(ModelProvider):
 
     async def infer(self, model_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         self._request_count += 1
+        try:
+            from app.metrics.updater import record_provider_request
+            record_provider_request("adhoc")
+        except Exception:
+            pass
 
         # If market odds are present, route to the ensemble engine which can produce
         # a real probabilistic prediction from the implied probabilities alone.
