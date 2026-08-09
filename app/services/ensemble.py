@@ -37,7 +37,10 @@ class EnsembleEngine:
         lam_h, lam_a = market_to_xg(hp, ap, dp)
 
         all_models = registry.get_all()
-        participating_models = [m for m in all_models if m.provider == "internal" and m.id != "ensemble_v1"]
+        participating_models = [
+            m for m in all_models
+            if m.provider in {"internal", "vit-internal"} and m.id != "ensemble_v1"
+        ]
         n = len(participating_models) if participating_models else 13
         if not participating_models:
             logger.warning("No participating models found — using fallback weight count (n=13).")

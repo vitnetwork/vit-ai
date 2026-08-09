@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /workspaces/vit-ai && python - <<'PY'\nimport requests\nurls = \\['https://vit-ai\\.onrender\\.com/ping','https://vit-ai\\.onrender\\.com/health','https://vit-ai\\.onrender\\.com/api/v1/ai/status'\\]\nfor u in urls:\n    try:\n        r = requests\\.get\\(u, timeout=10\\)\n        print\\(u, r\\.status_code, r\\.text\\[:1000\\]\\)\n    except Exception as e:\n        print\\(u, 'ERROR', e\\)\nPY$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

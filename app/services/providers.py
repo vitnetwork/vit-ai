@@ -85,8 +85,19 @@ class InternalProvider(ModelProvider):
                 "model_id": model_id,
             }
 
-        result = artifact.predict(payload)
-        return result
+        try:
+            result = artifact.predict(payload)
+            if isinstance(result, dict):
+                result.setdefault("provider", "internal")
+            return result
+        except Exception as exc:
+            logger.error("InternalProvider inference failed for %s: %s", model_id, exc)
+            return {
+                "status": "error",
+                "message": str(exc),
+                "provider": "internal",
+                "model_id": model_id,
+            }
 
     async def embeddings(self, text: str, model_id: str) -> Dict[str, Any]:
         # Delegate to the deterministic hash embedding service

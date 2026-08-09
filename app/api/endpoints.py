@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Body, status
 from typing import List, Dict, Any
 from app.schemas.model import Model, ModelCreate, ModelUpdate, ModelVersion, ModelVersionCreate
 from app.schemas.inference import InferenceRequest, InferenceResponse
+from app.schemas.diagnostics import AIDiagnostics
 from app.schemas.dataset import Dataset, DatasetCreate
 from app.schemas.feature import Feature, FeatureCreate
 from app.schemas.training import TrainingJob, TrainingJobCreate
@@ -22,6 +23,10 @@ protected = [Depends(verify_auth)]
 @router.get("/ai/status")
 async def get_ai_status():
     return kernel.get_status()
+
+@router.get("/ai/diagnostics", response_model=AIDiagnostics, dependencies=protected)
+async def get_ai_diagnostics():
+    return kernel.get_diagnostics()
 
 @router.get("/ai/providers")
 async def get_ai_providers():

@@ -25,7 +25,7 @@ class ModelBase(BaseModel):
     # Optional fields — not required for internal VIT models loaded from disk
     model_type: Optional[str] = None
     capabilities: List[str] = []
-    provider: str = "vit-internal"
+    provider: str = "internal"
     input_schema: Dict[str, Any] = {}
     output_schema: Dict[str, Any] = {}
 

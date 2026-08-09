@@ -37,7 +37,7 @@ def _get_secret() -> str:
         if not _SECRET:
             logger.warning(
                 "[service_auth] SERVICE_TOKEN_SECRET not set — "
-                "HMAC token validation disabled"
+                "HMAC token validation disabled for generation; verification will fail unless configured"
             )
     return _SECRET
 
@@ -60,8 +60,9 @@ def verify_service_token(token: str) -> bool:
     """Validate a service token — accepts current and previous minute bucket."""
     secret = _get_secret()
     if not secret:
-        # No secret configured — accept all tokens in dev mode
-        return True
+        # No secret configured — fail closed for verification to avoid accepting arbitrary tokens
+        logger.warning("[service_auth] SERVICE_TOKEN_SECRET not set — refusing to validate service tokens")
+        return False
 
     try:
         parts = token.split(".")

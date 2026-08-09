@@ -83,6 +83,63 @@ class ModelRegistry:
   def loaded_model_count(self) -> int:
       return sum(1 for a in self.loaded_artifacts.values() if a.is_loaded)
 
+  def inference_ready_count(self) -> int:
+      return sum(1 for a in self.loaded_artifacts.values() if a.inference_ready)
+
+  def failed_model_count(self) -> int:
+      return sum(1 for a in self.loaded_artifacts.values() if a.is_loaded and not a.inference_ready)
+
+  def inference_summary(self) -> Dict[str, Any]:
+      total = 0
+      failed = 0
+      last_success = None
+      for artifact in self.loaded_artifacts.values():
+          total += artifact.inference_count
+          failed += artifact.inference_failures
+          ts = getattr(artifact, "last_successful_inference_at", None)
+          if ts:
+              last_success = max(last_success, ts) if last_success else ts
+      return {
+          "total_inference_count": total,
+          "failed_inference_count": failed,
+          "last_successful_inference": last_success,
+      }
+
+  def get_diagnostics(self) -> List[Dict[str, Any]]:
+      diagnostics = []
+      for model_id, model in self.models.items():
+          version_obj = None
+          if model.active_version:
+              version_obj = next((v for v in model.versions if v.version == model.active_version), None)
+          if version_obj is None and model.versions:
+              version_obj = model.versions[0]
+
+          artifact = self.get_artifact(model_id, version_obj.version) if version_obj else None
+          configured = bool(version_obj and version_obj.storage_id)
+          diagnostics.append({
+              "model_id": model.id,
+              "name": model.name,
+              "version": version_obj.version if version_obj else None,
+              "framework": model.model_type,
+              "provider": model.provider,
+              "registered": True,
+              "configured": configured,
+              "artifact_available": bool(artifact and artifact._artifact is not None),
+              "artifact_source": artifact.metadata().get("load_source") if artifact else None,
+              "loaded": bool(artifact and artifact.is_loaded),
+              "inference_ready": bool(artifact and artifact.inference_ready),
+              "health": artifact.metadata().get("health") if artifact else "unknown",
+              "failed": bool(artifact and (artifact._metadata.get("load_error") or (artifact.is_loaded and not artifact.inference_ready))),
+              "load_error": artifact.metadata().get("load_error") if artifact else None,
+              "attempted_paths": artifact.metadata().get("attempted_paths") if artifact else None,
+              "load_time": artifact.metadata().get("load_time") if artifact else None,
+              "last_loaded_at": artifact.metadata().get("last_loaded_at") if artifact else None,
+              "last_inference_at": artifact.metadata().get("last_inference_at") if artifact else None,
+              "inference_count": artifact.inference_count if artifact else 0,
+              "inference_failures": artifact.inference_failures if artifact else 0,
+          })
+      return diagnostics
+
   def add_version(self, model_id: str, version_in: ModelVersionCreate) -> Optional[ModelVersion]:
       model = self.get_by_id(model_id)
       if not model:

@@ -22,11 +22,19 @@ class InferencePipeline:
 
         # 1. Resolve Model and Provider
         model = registry.get_by_id(request.model_id)
-        if not model:
-            logger.warning(f"Model {request.model_id} not found in registry. Using ad-hoc provider.")
-            provider_type = "adhoc"
-        else:
+        provider_type = "adhoc"
+        if model:
             provider_type = model.provider
+            provider_type = {
+                "vit-internal": "internal",
+                "internal": "internal",
+                "vit-ensemble": "ensemble",
+                "ensemble": "ensemble",
+                "vit-adhoc": "adhoc",
+                "adhoc": "adhoc",
+            }.get(provider_type, provider_type)
+        else:
+            logger.warning(f"Model {request.model_id} not found in registry. Using ad-hoc provider.")
 
         provider = self.providers.get(provider_type, self.providers["adhoc"])
 
