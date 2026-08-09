@@ -116,6 +116,25 @@ class ModelRegistry:
 
           artifact = self.get_artifact(model_id, version_obj.version) if version_obj else None
           configured = bool(version_obj and version_obj.storage_id)
+          # Determine explicit lifecycle state
+          failed_flag = bool(artifact and (artifact._metadata.get("load_error") or (artifact.is_loaded and not artifact.inference_ready)))
+          loaded_flag = bool(artifact and artifact.is_loaded)
+          inference_ready_flag = bool(artifact and artifact.inference_ready)
+          artifact_available_flag = bool(artifact and artifact._artifact is not None)
+
+          if failed_flag:
+              state = "FAILED"
+          elif inference_ready_flag:
+              state = "INFERENCE_READY"
+          elif loaded_flag:
+              state = "LOADED"
+          elif artifact_available_flag:
+              state = "ARTIFACT_AVAILABLE"
+          elif configured:
+              state = "CONFIGURED"
+          else:
+              state = "REGISTERED"
+
           diagnostics.append({
               "model_id": model.id,
               "name": model.name,
@@ -128,6 +147,7 @@ class ModelRegistry:
               "artifact_source": artifact.metadata().get("load_source") if artifact else None,
               "loaded": bool(artifact and artifact.is_loaded),
               "inference_ready": bool(artifact and artifact.inference_ready),
+              "state": state,
               "health": artifact.metadata().get("health") if artifact else "unknown",
               "failed": bool(artifact and (artifact._metadata.get("load_error") or (artifact.is_loaded and not artifact.inference_ready))),
               "load_error": artifact.metadata().get("load_error") if artifact else None,

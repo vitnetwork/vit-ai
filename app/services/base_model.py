@@ -187,6 +187,36 @@ class StandardizedModel(BaseModelInterface):
           return artifact["model"], artifact.get("scaler")
       return artifact, None
 
+  def _normalize_feature_value(self, value: Any) -> float:
+      if isinstance(value, bool):
+          return 1.0 if value else 0.0
+      if value is None:
+          raise ValueError("Feature values must not be None")
+      if isinstance(value, (int, float)):
+          return float(value)
+      if isinstance(value, str):
+          value = value.strip()
+          if value == "":
+              raise ValueError("Feature string values must not be empty")
+          try:
+              return float(value)
+          except ValueError:
+              raise ValueError(f"Cannot convert feature value '{value}' to float")
+      raise ValueError(f"Unsupported feature value type: {type(value).__name__}")
+
+  def _features_dict_to_list(self, features: Dict[str, Any]) -> List[float]:
+      if not isinstance(self._artifact, dict):
+          raise ValueError("Cannot resolve feature columns from non-dict artifact")
+      feature_columns = self._artifact.get("feature_columns")
+      if not isinstance(feature_columns, list):
+          raise ValueError("Artifact does not expose feature_columns")
+      values: List[float] = []
+      for name in feature_columns:
+          if name not in features:
+              raise ValueError(f"Missing feature column '{name}' in payload")
+          values.append(self._normalize_feature_value(features[name]))
+      return values
+
   def predict(self, payload: Dict[str, Any]) -> Dict[str, Any]:
       if not self.is_loaded or self._artifact is None:
           raise RuntimeError(
@@ -197,8 +227,10 @@ class StandardizedModel(BaseModelInterface):
           import numpy as np
           model, scaler = self._resolve_artifact()
           features = payload.get("features", [])
+          if isinstance(features, dict):
+              features = self._features_dict_to_list(features)
           if not isinstance(features, list) or not features:
-              raise ValueError("Payload must include a non-empty 'features' list")
+              raise ValueError("Payload must include a non-empty 'features' list or dict")
 
           X = np.array(features).reshape(1, -1)
           if scaler is not None and hasattr(scaler, "transform"):
@@ -258,7 +290,8 @@ class StandardizedModel(BaseModelInterface):
       }
 
   def validate(self, payload):
-      return "features" in payload
+      features = payload.get("features")
+      return bool(features) and isinstance(features, (list, dict))
 
   def version(self):
       return self.model_version

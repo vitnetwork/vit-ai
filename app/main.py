@@ -9,6 +9,12 @@ from app.api.endpoints import router
 from app.core.config import settings
 # Import the module-level singleton so lifespan and endpoints share the same instance
 from app.services.registry import registry as model_registry
+from fastapi import Response
+
+try:
+  from prometheus_client import CONTENT_TYPE_LATEST
+except Exception:
+  CONTENT_TYPE_LATEST = "text/plain; version=0.0.4"
 
 logging.basicConfig(
   level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -25,7 +31,12 @@ def get_registry():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
   logger.info("VIT AI Service v%s starting up…", settings.APP_VERSION)
-  logger.info("MODEL_DIR=%s  VIT_STORAGE_URL=%s", settings.MODEL_DIR, settings.VIT_STORAGE_URL)
+  logger.info(
+      "MODEL_DIR=%s  VIT_STORAGE_URL=%s  VIT_NETWORK_URL=%s",
+      settings.MODEL_DIR,
+      settings.VIT_STORAGE_URL,
+      settings.VIT_NETWORK_URL,
+  )
 
   # Bootstrap all 16 VIT ensemble models into the module-level registry singleton.
   # endpoints.py imports this same singleton so models are immediately visible.
@@ -76,6 +87,17 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api/v1")
+
+
+@app.get("/metrics")
+async def metrics():
+  """Prometheus metrics endpoint exporting registry and provider metrics."""
+  try:
+    from app.metrics.collector import collect_metrics
+    data = collect_metrics()
+    return Response(content=data, media_type=CONTENT_TYPE_LATEST)
+  except Exception as exc:
+    return Response(content=f"# metrics error: {exc}\n", media_type="text/plain")
 
 
 @app.get("/ping")
