@@ -18,5 +18,5 @@ apscheduler==3.10.4
 scikit-learn==1.9.0
 xgboost==3.2.0
 joblib==1.4.2
-numpy==2.5.1
+numpy==2.5.2
 pandas==2.2.2
