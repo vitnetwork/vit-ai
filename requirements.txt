@@ -4,7 +4,7 @@
 # CVE-2024-6827  uvicorn 0.30.1 header injection → 0.32.x
 fastapi==0.115.5
 redis[asyncio]>=5.0.0
-uvicorn[standard]==0.32.1
+uvicorn[standard]==0.52.1
 python-dotenv==1.0.1
 pydantic==2.7.2
 pydantic-settings==2.2.1
