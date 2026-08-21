@@ -9,7 +9,7 @@ python-dotenv==1.0.1
 pydantic==2.7.2
 pydantic-settings==2.2.1
 prometheus-client==0.26.0
-PyJWT[crypto]==2.9.0
+PyJWT[crypto]==2.13.0
 cryptography>=50.0.0
 passlib[bcrypt]==1.7.4
 httpx==0.28.1
