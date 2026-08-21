@@ -10,7 +10,7 @@ pydantic==2.7.2
 pydantic-settings==2.2.1
 prometheus-client==0.26.0
 PyJWT[crypto]==2.9.0
-cryptography>=42.0.8
+cryptography>=50.0.0
 passlib[bcrypt]==1.7.4
 httpx==0.28.1
 python-multipart==0.0.12
