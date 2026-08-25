@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime, UTC
 from typing import Optional, Dict, Any
 
@@ -17,6 +17,4 @@ class Dataset(DatasetBase):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    class Config:
-        protected_namespaces = ()
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
