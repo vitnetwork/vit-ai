@@ -111,26 +111,39 @@ class StandardizedModel(BaseModelInterface):
           model_dir = getattr(settings, "MODEL_DIR", None)
       if not model_dir:
           model_dir = os.getenv("MODEL_DIR") or "/app/models"
+
+      model_dirs = []
+      if model_dir:
+          model_dirs.append(model_dir)
+      pwd_models = os.path.abspath("models")
+      if pwd_models not in model_dirs and os.path.isdir(pwd_models):
+          model_dirs.append(pwd_models)
+      app_models = "/app/models"
+      if app_models not in model_dirs and os.path.isdir(app_models):
+          model_dirs.append(app_models)
+
       candidates = []
+      for md in model_dirs:
+          if self.storage_id:
+              storage = str(self.storage_id)
+              if storage.startswith("local://") or storage.startswith("file://"):
+                  path = storage.split("://", 1)[1]
+                  if not os.path.isabs(path):
+                      path = os.path.join(md, path)
+                  if path not in candidates:
+                      candidates.append(path)
+              elif os.path.isabs(storage) or os.path.exists(storage):
+                  if storage not in candidates:
+                      candidates.append(storage)
+              else:
+                  path = os.path.join(md, storage)
+                  if path not in candidates:
+                      candidates.append(path)
 
-      if self.storage_id:
-          storage = str(self.storage_id)
-          if storage.startswith("local://") or storage.startswith("file://"):
-              path = storage.split("://", 1)[1]
-              if not os.path.isabs(path):
-                  path = os.path.join(model_dir, path)
-              candidates.append(path)
-          elif os.path.isabs(storage) or os.path.exists(storage):
-              candidates.append(storage)
-          else:
-              # Treat relative storage_id paths as relative to MODEL_DIR
-              candidates.append(os.path.join(model_dir, storage))
-
-      candidates.extend([
-          os.path.join(model_dir, f"{self.model_id}.pkl"),
-          os.path.join(model_dir, f"{self.model_id}_v1.pkl"),
-          os.path.join(model_dir, f"{self.model_id}_v2.pkl"),
-      ])
+          for fn in [f"{self.model_id}.pkl", f"{self.model_id}_v1.pkl", f"{self.model_id}_v2.pkl"]:
+              path = os.path.join(md, fn)
+              if path not in candidates:
+                  candidates.append(path)
 
       attempted_paths = []
       for path in candidates:
