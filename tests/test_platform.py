@@ -1,6 +1,6 @@
 import os
 os.environ.setdefault("VIT_AI_API_KEY", "vit-internal-key")
-os.environ.setdefault("MODEL_DIR", "/workspaces/vit-ai/models")
+os.environ.setdefault("MODEL_DIR", os.getenv("MODEL_DIR") or os.path.abspath("models"))
 
 import pytest
 from fastapi.testclient import TestClient
