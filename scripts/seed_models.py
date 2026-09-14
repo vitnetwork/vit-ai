@@ -46,7 +46,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger("seed_models")
 
 MODEL_DIR = Path(os.getenv("MODEL_DIR", "/app/models"))
-DATA_DIR  = Path(os.getenv("DATA_DIR", "/app/data"))
+DATA_DIR  = Path(os.getenv("DATA_DIR", "/app/data" if Path("/app/data").exists() else "data"))
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Real data loading ─────────────────────────────────────────────────────────
@@ -62,12 +62,19 @@ def _load_csvs() -> list[dict]:
     patterns = [
         str(DATA_DIR / "*.csv"),
         str(DATA_DIR / "uploads" / "*.csv"),
+        "data/*.csv",
+        "data/uploads/*.csv",
+        "/app/data/*.csv",
+        "/app/data/uploads/*.csv",
         # Vitnetwork uploads path (used during local development)
         "/tmp/vit-core/vit/data/uploads/*.csv",
     ]
     files = []
     for p in patterns:
-        files.extend(glob.glob(p))
+        for f in glob.glob(p):
+            abs_f = os.path.abspath(f)
+            if abs_f not in files:
+                files.append(abs_f)
 
     if not files:
         log.warning("No CSV files found in %s — using synthetic data", DATA_DIR)
