@@ -17,6 +17,10 @@ class InferencePipeline:
             "adhoc": AdHocProvider()
         }
 
+    async def run(self, request: InferenceRequest) -> InferenceResponse:
+        """Alias for process() to support run(request) calls."""
+        return await self.process(request)
+
     async def process(self, request: InferenceRequest) -> InferenceResponse:
         start_time = time.time()
 

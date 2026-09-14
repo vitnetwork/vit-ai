@@ -29,6 +29,8 @@ class ModelBase(BaseModel):
     input_schema: Dict[str, Any] = {}
     output_schema: Dict[str, Any] = {}
 
+    model_config = ConfigDict(protected_namespaces=())
+
 class Model(ModelBase):
     versions: List[ModelVersion] = []
     active_version: Optional[str] = None
