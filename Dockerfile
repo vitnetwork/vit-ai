@@ -17,6 +17,9 @@ RUN addgroup --system vituser && adduser --system --group vituser
 # of app.services.rating_shim resolves correctly at build time)
 COPY app /app/app
 
+# Data files for model seeding
+COPY data /app/data
+
 # Seed scripts
 COPY scripts /app/scripts
 
