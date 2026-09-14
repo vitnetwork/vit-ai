@@ -75,6 +75,29 @@ async def add_model_version(model_id: str, version_in: ModelVersionCreate):
 async def infer(request: InferenceRequest):
     return await inference_pipeline.process(request)
 
+@router.post("/infer/batch", dependencies=protected)
+async def infer_batch(payload: Dict[str, Any] = Body(...)):
+    model_id = payload.get("model_id")
+    payloads = payload.get("payloads")
+    if not model_id or not isinstance(payloads, list) or not payloads:
+        raise HTTPException(status_code=400, detail="Expected model_id and a non-empty payloads list")
+
+    model = registry.get_by_id(model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    artifact = registry.get_artifact(model_id, model.active_version)
+    if not artifact:
+        raise HTTPException(status_code=503, detail="Model artifact is not loaded")
+
+    results = artifact.batch_predict(payloads)
+    return {
+        "model_id": model_id,
+        "version": model.active_version,
+        "count": len(results),
+        "results": results,
+    }
+
 @router.post("/predict", dependencies=protected)
 async def predict(request: InferenceRequest):
     return await inference_pipeline.process(request)
@@ -124,6 +147,13 @@ async def get_dataset(dataset_id: str):
         raise HTTPException(status_code=404, detail="Dataset not found")
     return dataset
 
+@router.patch("/datasets/{dataset_id}", response_model=Dataset, dependencies=protected)
+async def update_dataset(dataset_id: str, dataset_in: Dict[str, Any] = Body(...)):
+    dataset = dataset_registry.update(dataset_id, dataset_in)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    return dataset
+
 @router.delete("/datasets/{dataset_id}", dependencies=protected)
 async def delete_dataset(dataset_id: str):
     if not dataset_registry.delete(dataset_id):
@@ -140,6 +170,13 @@ async def create_feature(feature_in: FeatureCreate):
     if feature_store.get_by_id(feature_in.id):
         raise HTTPException(status_code=400, detail="Feature already exists")
     return feature_store.register(feature_in)
+
+@router.patch("/features/{feature_id}", response_model=Feature, dependencies=protected)
+async def update_feature(feature_id: str, feature_in: Dict[str, Any] = Body(...)):
+    feature = feature_store.update(feature_id, feature_in)
+    if not feature:
+        raise HTTPException(status_code=404, detail="Feature not found")
+    return feature
 
 # --- Training Job Management ---
 @router.post("/training/jobs", response_model=TrainingJob, dependencies=protected)

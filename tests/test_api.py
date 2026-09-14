@@ -79,3 +79,63 @@ def test_infer_smoke_local_model():
         body = response.json()
         assert body.get("model_id") == "xgb_v1"
         assert "result" in body
+
+
+def test_infer_batch_smoke_local_model():
+    headers = {"X-API-KEY": "vit-internal-key"}
+    payload = {
+        "model_id": "xgb_v1",
+        "payloads": [
+            {"features": [0.1] * 10},
+            {"features": [0.9] * 10},
+        ],
+    }
+    with TestClient(app) as client:
+        response = client.post("/api/v1/infer/batch", json=payload, headers=headers)
+        assert response.status_code == 200
+        body = response.json()
+        assert body["model_id"] == "xgb_v1"
+        assert len(body["results"]) == 2
+        assert all("status" in item for item in body["results"])
+
+
+def test_feature_and_dataset_patch_endpoints():
+    headers = {"X-API-KEY": "vit-internal-key"}
+    feature_payload = {
+        "id": "test-feature-patch",
+        "name": "Patch Feature",
+        "type": "numeric",
+        "description": "used for patch coverage",
+        "metadata": {"source": "api-test"},
+    }
+    dataset_payload = {
+        "id": "test-dataset-patch",
+        "name": "Patch Dataset",
+        "version": "1.0",
+        "description": "used for patch coverage",
+        "checksum": "abc123",
+        "metadata": {"source": "api-test"},
+    }
+
+    with TestClient(app) as client:
+        feature_response = client.post("/api/v1/features", json=feature_payload, headers=headers)
+        assert feature_response.status_code == 200
+
+        updated_feature = client.patch(
+            "/api/v1/features/test-feature-patch",
+            json={"name": "Updated Feature", "description": "updated via patch"},
+            headers=headers,
+        )
+        assert updated_feature.status_code == 200
+        assert updated_feature.json()["name"] == "Updated Feature"
+
+        dataset_response = client.post("/api/v1/datasets", json=dataset_payload, headers=headers)
+        assert dataset_response.status_code == 200
+
+        updated_dataset = client.patch(
+            "/api/v1/datasets/test-dataset-patch",
+            json={"name": "Updated Dataset", "description": "updated via patch"},
+            headers=headers,
+        )
+        assert updated_dataset.status_code == 200
+        assert updated_dataset.json()["name"] == "Updated Dataset"

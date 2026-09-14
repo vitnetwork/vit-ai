@@ -86,6 +86,18 @@ class FeatureStore:
     def get_by_id(self, feature_id: str) -> Optional[Feature]:
         return self.features.get(feature_id)
 
+    def update(self, feature_id: str, update_data: Dict[str, object]) -> Optional[Feature]:
+        feature = self.get_by_id(feature_id)
+        if not feature:
+            return None
+        for key, value in update_data.items():
+            if key in {"created_at", "updated_at"}:
+                continue
+            setattr(feature, key, value)
+        feature.updated_at = datetime.now(UTC)
+        self._fire(self._persist(feature))
+        return feature
+
     def delete(self, feature_id: str) -> bool:
         if feature_id in self.features:
             del self.features[feature_id]

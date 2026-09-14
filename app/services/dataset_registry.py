@@ -7,6 +7,7 @@ Call restore_from_redis() at lifespan startup.
 import asyncio
 import json
 import logging
+from datetime import datetime, UTC
 from typing import Dict, List, Optional
 
 from app.schemas.dataset import Dataset, DatasetCreate
@@ -84,6 +85,18 @@ class DatasetRegistry:
 
     def get_by_id(self, dataset_id: str) -> Optional[Dataset]:
         return self.datasets.get(dataset_id)
+
+    def update(self, dataset_id: str, update_data: Dict[str, object]) -> Optional[Dataset]:
+        dataset = self.get_by_id(dataset_id)
+        if not dataset:
+            return None
+        for key, value in update_data.items():
+            if key in {"created_at", "updated_at"}:
+                continue
+            setattr(dataset, key, value)
+        dataset.updated_at = datetime.now(UTC)
+        self._fire(self._persist(dataset))
+        return dataset
 
     def delete(self, dataset_id: str) -> bool:
         if dataset_id in self.datasets:
