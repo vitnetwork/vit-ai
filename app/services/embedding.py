@@ -10,7 +10,6 @@ swap _hash_embed() for the real encoder — the interface stays identical.
 """
 import hashlib
 import math
-import struct
 import time
 import uuid
 from typing import Dict, Any
@@ -36,9 +35,9 @@ def _hash_embed(text: str, dim: int = 128) -> list[float]:
     chunk = 0
     while len(raw) < dim:
         h = hashlib.sha256(seed + chunk.to_bytes(4, "big")).digest()
-        # Interpret as 8 signed 32-bit floats in [-1, 1]
+        # Map hash words to finite values in [-1, 1].
         raw.extend(
-            struct.unpack("f", h[i : i + 4])[0]
+            (int.from_bytes(h[i : i + 4], "big") / 0xFFFFFFFF) * 2.0 - 1.0
             for i in range(0, 32, 4)
         )
         chunk += 1

@@ -37,12 +37,17 @@ async def verify_auth(
             return {"sub": "internal_service", "scopes": ["full"], "auth": "hmac"}
 
     # ── 2. Static API key (backward compat / fallback) ───────────────────────
-    internal_key = (
-        settings.VIT_AI_API_KEY
-        or os.getenv("VIT_AI_API_KEY", "")
-        or os.getenv("INTERNAL_API_KEY", "")
-    )
-    if api_key and internal_key and api_key == internal_key:
+    configured_keys = {
+        value for value in (
+            settings.VIT_API_KEY,
+            settings.VIT_AI_API_KEY,
+            os.getenv("VIT_API_KEY", ""),
+            os.getenv("VIT_AI_API_KEY", ""),
+            os.getenv("INTERNAL_API_KEY", ""),
+        )
+        if value
+    }
+    if api_key and api_key in configured_keys:
         return {"sub": "internal_service", "scopes": ["full"], "auth": "api_key"}
 
     # ── 3. JWT Bearer token ───────────────────────────────────────────────────

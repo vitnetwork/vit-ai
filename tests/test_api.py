@@ -7,6 +7,22 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+def test_vit_api_key_alias_is_accepted():
+    import asyncio
+    from app.core import security
+
+    original_ai_key = getattr(security.settings, "VIT_AI_API_KEY", None)
+    original_vit_key = getattr(security.settings, "VIT_API_KEY", None)
+    try:
+        security.settings.VIT_AI_API_KEY = None
+        security.settings.VIT_API_KEY = "alias-key"
+        result = asyncio.run(security.verify_auth(api_key="alias-key"))
+        assert result["auth"] == "api_key"
+    finally:
+        security.settings.VIT_AI_API_KEY = original_ai_key
+        security.settings.VIT_API_KEY = original_vit_key
+
+
 def test_health():
     with TestClient(app) as client:
         response = client.get("/health")
@@ -97,6 +113,23 @@ def test_infer_batch_smoke_local_model():
         assert body["model_id"] == "xgb_v1"
         assert len(body["results"]) == 2
         assert all("status" in item for item in body["results"])
+
+
+def test_embed_returns_finite_normalized_vector():
+    headers = {"X-API-KEY": "vit-internal-key"}
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/embed",
+            json={"text": "VIT AI embedding smoke test"},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        body = response.json()
+        vector = body["embedding"]
+        assert body["dimensions"] == 128
+        assert len(vector) == 128
+        assert all(isinstance(value, float) and value == value for value in vector)
+        assert 0.99 < sum(value * value for value in vector) < 1.01
 
 
 def test_feature_and_dataset_patch_endpoints():

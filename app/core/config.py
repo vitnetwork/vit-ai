@@ -7,7 +7,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Optional, List
-from pydantic import Field
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -54,12 +54,27 @@ class Settings(BaseSettings):
     # Defaults to None when unset; storage routes degrade gracefully.
     VIT_STORAGE_URL: Optional[str] = None
     # ── VIT Network / gateway integration ─────────────────────────────────────────────
-    # Optional at startup — used for real feature ingestion and validation tooling.
-    VIT_NETWORK_URL: Optional[str] = None
+    # Kept as canonical names but accept both env spellings for compatibility.
+    VIT_NETWORK_URL: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("VIT_NETWORK_URL", "VIT_AI_URL"),
+    )
+    VIT_AI_URL: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("VIT_AI_URL", "VIT_NETWORK_URL"),
+    )
     # ── Internal service authentication ───────────────────────────────────
     # Optional at startup — auth middleware returns 401 when the key is absent
     # rather than preventing boot.
-    VIT_AI_API_KEY: Optional[str] = None
+    # Accept both the canonical VIT_API_KEY name and the legacy VIT_AI_API_KEY.
+    VIT_API_KEY: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("VIT_API_KEY", "VIT_AI_API_KEY"),
+    )
+    VIT_AI_API_KEY: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("VIT_AI_API_KEY", "VIT_API_KEY"),
+    )
 
     # ── VIT Chain oracle (Chain ID 7764) ──────────────────────────────────
     # Optional at startup — oracle settlement degrades gracefully when absent.
@@ -84,6 +99,8 @@ def _build_settings() -> Settings:
             ACCESS_TOKEN_EXPIRE_MINUTES=30,
             VIT_STORAGE_URL=None,
             VIT_NETWORK_URL=None,
+            VIT_AI_URL=None,
+            VIT_API_KEY=None,
             VIT_AI_API_KEY=None,
             ORACLE_PRIVATE_KEY=None,
             UNIVERSAL_ORACLE_ADDRESS=None,
@@ -92,8 +109,10 @@ def _build_settings() -> Settings:
     # Warn about missing optional production values — never abort
     _OPTIONAL_PROD = {
         "VIT_STORAGE_URL": s.VIT_STORAGE_URL,
-        "VIT_NETWORK_URL": s.VIT_NETWORK_URL,
-        "VIT_AI_API_KEY": s.VIT_AI_API_KEY,
+        "VIT_NETWORK_URL": s.VIT_NETWORK_URL or s.VIT_AI_URL,
+        "VIT_AI_URL": s.VIT_AI_URL or s.VIT_NETWORK_URL,
+        "VIT_API_KEY": s.VIT_API_KEY or s.VIT_AI_API_KEY,
+        "VIT_AI_API_KEY": s.VIT_AI_API_KEY or s.VIT_API_KEY,
         "ORACLE_PRIVATE_KEY": s.ORACLE_PRIVATE_KEY,
         "UNIVERSAL_ORACLE_ADDRESS": s.UNIVERSAL_ORACLE_ADDRESS,
     }
